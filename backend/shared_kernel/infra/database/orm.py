@@ -1,7 +1,7 @@
 from sqlalchemy import MetaData, Table, Column, Integer, String, Date, Text
 from sqlalchemy.orm import registry, composite
 from identity.domain.entity.user import User as IdentityUserEntity
-from shared_kernel.domain.entity.value_object import UserRole
+from shared_kernel.domain.entity.user_role import UserRole
 
 metadata = MetaData()
 mapper_registry = registry()
@@ -42,4 +42,3 @@ def init_orm_mappers():
             "user_note": user.c.user_note,
         },
     )
-    

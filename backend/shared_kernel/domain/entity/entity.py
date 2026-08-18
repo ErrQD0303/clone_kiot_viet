@@ -1,8 +1,13 @@
-from dataclasses import field
+"""Define domain entities for Shared Kernel"""
+from dataclasses import dataclass, field
 from uuid import UUID, uuid4
-from typing import Any
+from typing import Any, TypeVar
 
+TEntity = TypeVar("TEntity", bound="Entity")
+
+@dataclass(eq=False, init=False)
 class Entity:
+    """Base class for domain entities."""
     id: UUID = field(default_factory=uuid4, init=False)
 
     def __eq__(self, other: Any) -> bool:
@@ -17,4 +22,3 @@ class AggregateRoot(Entity):
     """
     An entry point of aggregate.
     """
-    pass
