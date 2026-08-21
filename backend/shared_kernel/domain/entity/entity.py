@@ -1,24 +1,38 @@
 """Define domain entities for Shared Kernel"""
 from dataclasses import dataclass, field
 from uuid import UUID, uuid4
-from typing import Any, TypeVar
+from typing import Any, Generic, TypeVar, Hashable
 
-TEntity = TypeVar("TEntity", bound="Entity") # pylint: disable=invalid-name
+TIdentity = TypeVar("TIdentity", bound=Hashable) # pylint: disable=invalid-name
 
-@dataclass(eq=False, init=False)
-class Entity:
-    """Base class for domain entities."""
-    id: UUID = field(default_factory=uuid4, init=False)
+class Entity(Generic[TIdentity]):
+    """Base class for entities with any identity type."""
+
+    @property
+    def identity(self) -> TIdentity:
+        """Get the identity of the entity."""
+        raise NotImplementedError
 
     def __eq__(self, other: Any) -> bool:
+        """Check equality based on identity."""
         if isinstance(other, type(self)):
-            return self.id == other.id
+            return self.identity == other.identity
         return False
 
     def __hash__(self):
-        return hash(self.id)
+        """Generate a hash based on identity."""
+        return hash(self.identity)
 
-class AggregateRoot(Entity):
+@dataclass(eq=False, init=False)
+class UUIDEntity(Entity[UUID]):
+    """Base class for entities using a UUID identity."""
+    id: UUID = field(default_factory=uuid4, init=False)
+
+    def identify(self) -> UUID:
+        """Get the identity of the entity."""
+        return self.id
+
+class AggregateRoot(UUIDEntity):
     """
     An entry point of aggregate.
     """
