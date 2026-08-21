@@ -1,8 +1,9 @@
-from dependency_injector import containers, providers
+"""Defines the application container for dependency injection."""
+from dependency_injector import containers
 
-class AppContainer(containers.DeclarativeContainer):
-    wiring_config = containers.WiringConfiguration(
+class AppContainer(containers.DeclarativeContainer):  # pylint: disable=c-extension-no-member
+    """Application container class for dependency injection."""
+    wiring_config = containers.WiringConfiguration(  # pylint: disable=c-extension-no-member
         modules=[
-            
         ]
     )

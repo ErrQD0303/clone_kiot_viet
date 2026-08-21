@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from uuid import UUID, uuid4
 from typing import Any, TypeVar
 
-TEntity = TypeVar("TEntity", bound="Entity")
+TEntity = TypeVar("TEntity", bound="Entity") # pylint: disable=invalid-name
 
 @dataclass(eq=False, init=False)
 class Entity:

@@ -1,3 +1,4 @@
+"""Define the ORM mappings for the User entity using SQLAlchemy."""
 from sqlalchemy import MetaData, Table, Column, Integer, String, Date, Text
 from sqlalchemy.orm import registry, composite
 from identity.domain.entity.user import User as IdentityUserEntity
@@ -30,7 +31,7 @@ def init_orm_mappers():
         IdentityUserEntity,
         user,
         exclude_properties={"role"},
-        properties={    
+        properties={
             "display_name": user.c.display_name,
             "username": user.c.username,
             "password": user.c.password,
