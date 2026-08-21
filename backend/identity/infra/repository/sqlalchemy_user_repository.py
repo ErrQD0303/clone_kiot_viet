@@ -1,7 +1,7 @@
 """Define concrete implementation of the UserRepository using SQLAlchemy."""
 from sqlalchemy.orm import Session
 
-from identity.domain.user_repository import UserRepository
+from identity.domain.repository.user_repository import UserRepository
 from identity.domain.entity.user import User
 
 
