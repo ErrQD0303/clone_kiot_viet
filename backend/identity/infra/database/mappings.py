@@ -12,7 +12,7 @@ from shared_kernel.infra.database.registry import mapper_registry
 from identity.domain.entity.user import User
 from identity.domain.entity.password_credential import PasswordCredential
 
-from tables import (
+from identity.infra.database.tables import (
     users_table,
     password_credentials_table,
     roles_table,

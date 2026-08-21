@@ -14,7 +14,7 @@ from sqlalchemy import (
     Index,
     LargeBinary,
 )
-from sqlalchemy.dialects.postgresql import CITEXT, UUID, INET, JSONB
+from sqlalchemy.dialects.postgresql import UUID, INET, JSONB
 
 from shared_kernel.infra.database.registry import metadata
 from shared_kernel.infra.database.schema import Schema
@@ -24,8 +24,8 @@ users_table = Table(
     "users",
     metadata,
     Column("id", UUID, primary_key=True, server_default=text("gen_random_uuid()")),
-    Column("username", CITEXT(), nullable=False, unique=True),
-    Column("email", CITEXT(), nullable=False, unique=True),
+    Column("username", TEXT, nullable=False, unique=True),
+    Column("email", TEXT, nullable=False, unique=True),
     Column("display_name", String(150), nullable=True),
     Column("status", String(16), nullable=False, server_default=UserStatus.PENDING.value),
     Column("email_verified_at", DateTime(timezone=True), nullable=True),
@@ -67,7 +67,7 @@ roles_table = Table(
     "roles",
     metadata,
     Column("id", UUID, primary_key=True, server_default=text("gen_random_uuid()")),
-    Column("code", CITEXT, nullable=False, unique=True),
+    Column("code", TEXT, nullable=False, unique=True),
     Column("name", String(150), nullable=False),
     Column("description", TEXT, nullable=True),
     Column("is_system", BOOLEAN, nullable=False, server_default=text("0")),
@@ -83,7 +83,7 @@ permissions_table = Table(
     "permissions",
     metadata,
     Column("id", UUID, primary_key=True, server_default=text("gen_random_uuid()")),
-    Column("code", CITEXT, nullable=False, unique=True),
+    Column("code", TEXT, nullable=False, unique=True),
     Column("description", TEXT, nullable=True),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
     Column("updated_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),

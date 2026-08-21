@@ -12,9 +12,9 @@ class Session(AggregateRoot):
     """Session entity representing a user login session."""
 
     user_id: UUID
+    expires_at: datetime
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     last_seen_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    expires_at: datetime
     revoked_at: datetime | None = None
     revoke_reason: str | None = None
     ip_address: str | None = None

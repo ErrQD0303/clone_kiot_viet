@@ -13,9 +13,9 @@ class RefreshToken(AggregateRoot):
 
     session_id: UUID
     token_hash: bytes
+    expires_at: datetime
     parent_token_id: UUID | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
-    expires_at: datetime
     used_at: datetime | None = None
     revoked_at: datetime | None = None
 

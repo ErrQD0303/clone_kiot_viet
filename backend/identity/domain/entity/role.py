@@ -11,8 +11,8 @@ class Role(AggregateRoot):
     name: str
     description: str | None = None
     is_system: bool = False
-    created_at = field(default_factory=lambda: datetime.now(UTC))
-    updated_at = field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def __post_init__(self):
         """Validate role invariants."""

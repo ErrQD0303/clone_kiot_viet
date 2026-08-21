@@ -9,12 +9,12 @@ from shared_kernel.domain.entity.entity import AggregateRoot
 class PasswordCredential(AggregateRoot):
     """PasswordCredential entity representing a user's password credential."""
     password_hash: str
-    password_changed_at = field(default_factory=lambda: datetime.now(UTC))
+    password_changed_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     must_change_password: bool = False
     failed_attempt_count: int = 0
     locked_until: datetime | None = None
-    created_at = field(default_factory=lambda: datetime.now(UTC))
-    updated_at = field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def __post_init__(self):
         """Validate password credential invariants."""

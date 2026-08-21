@@ -9,8 +9,8 @@ class Permission(AggregateRoot):
     """Permission entity representing a permission belonged to a user entity in a system."""
     code: str
     description: str | None = None
-    created_at = field(default_factory=lambda: datetime.now(UTC))
-    updated_at = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def __post_init__(self):
         """Validate permission invariants."""

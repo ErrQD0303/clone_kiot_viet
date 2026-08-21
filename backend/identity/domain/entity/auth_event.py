@@ -12,11 +12,11 @@ from shared_kernel.domain.entity.entity import Entity
 class AuthEvent(Entity[int | None]):
     """AuthEvent entity for authentication and authorization audit logs."""
 
+    event_type: str
+    success: bool
     id: int | None = None
     user_id: UUID | None = None
     session_id: UUID | None = None
-    event_type: str
-    success: bool
     ip_address: str | None = None
     user_agent: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)

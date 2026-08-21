@@ -6,8 +6,11 @@ from sqlalchemy import create_engine, inspect, Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from shared_kernel.domain.exception.create_database_fail_exception import CreateDatabaseFailException
+from shared_kernel.infra.database.schema import Schema
 from shared_kernel.infra.fastapi.config import settings
 from shared_kernel.infra.database.query.create_database_queries import CREATE_DATABASE_QUERIES
+from shared_kernel.infra.database.query.create_schema_queries import CREATE_SCHEMA_QUERIES
+from shared_kernel.infra.database.query.create_extension_queries import CREATE_EXTENSION_QUERIES
 
 sys_engine: Engine = create_engine(
     settings.SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
@@ -37,14 +40,27 @@ def create_database(db_engine: Engine = None, database_name: str = None):
             raise CreateDatabaseFailException(
                 "Database type could not be determined from the URL.")
 
-        create_query = CREATE_DATABASE_QUERIES.get(db_type)\
+        create_database_query = CREATE_DATABASE_QUERIES.get(db_type)\
             .format(database_name=database_name)
 
-        if not create_query:
+        if not create_database_query:
             raise CreateDatabaseFailException(
                 f"The database type '{db_type}' is not supported for automatic creation.")
 
-        connection.execute(create_query)
+        is_schema_supported = db_type in CREATE_SCHEMA_QUERIES
+        if is_schema_supported:
+            create_schema_query = CREATE_SCHEMA_QUERIES.get(db_type)
+            for schema in Schema:
+                connection.execute(create_schema_query.format(schema_name=schema.value))
+
+        is_extension_supported = db_type in CREATE_EXTENSION_QUERIES
+        if is_extension_supported:
+            create_extension_query = CREATE_EXTENSION_QUERIES.get(db_type)
+            for extension_name in settings.EXTENSION_NAMES:
+                connection.execute(create_extension_query.format(extension_name=extension_name))
+        
+
+        connection.execute(create_database_query)
 
 def get_engine():
     """Get SQLAlchemy engine"""
