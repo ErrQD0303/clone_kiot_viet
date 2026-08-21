@@ -2,7 +2,8 @@
 from contextlib import contextmanager
 from typing import Generator
 
-from sqlalchemy import create_engine, inspect, Engine
+from sqlalchemy import create_engine, inspect
+from sqlalchemy.engine import Engine, URL
 from sqlalchemy.orm import Session, sessionmaker
 
 from shared_kernel.domain.exception.create_database_fail_exception import CreateDatabaseFailException
@@ -16,10 +17,15 @@ sys_engine: Engine = create_engine(
     settings.SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
 
 
-def database_exists(db_engine: Engine) -> bool:
-    """Check if the database exists"""
-    inspector = inspect(db_engine)
-    return inspector.get_schema_names() is not None
+def database_exists(db_engine: Engine | URL | str) -> bool:
+    """Check if the database exists."""
+    engine = db_engine if isinstance(db_engine, Engine) else create_engine(str(db_engine), pool_pre_ping=True)
+
+    try:
+        inspector = inspect(engine)
+        return inspector.get_schema_names() is not None
+    except Exception:
+        return False
 
 def parse_database_type(url: str) -> str:
     """Parse the database type from the SQLAlchemy URL"""
@@ -62,12 +68,49 @@ def create_database(db_engine: Engine = None, database_name: str = None):
 
         connection.execute(create_database_query)
 
+def create_schema(db_engine: Engine = None, schema_name: str = None):
+    """Create the schema if it does not exist"""
+    if db_engine is None:
+        raise CreateDatabaseFailException("Database engine is not provided.")
+
+    if schema_name is None:
+        raise CreateDatabaseFailException("Schema name is not provided.")
+
+    with db_engine.connect() as connection:
+        db_type = parse_database_type(str(db_engine.url))
+        if not db_type:
+            raise CreateDatabaseFailException(
+                "Database type could not be determined from the URL.")
+
+        is_schema_supported = db_type in CREATE_SCHEMA_QUERIES
+        if is_schema_supported:
+            create_schema_query = CREATE_SCHEMA_QUERIES.get(db_type)
+            connection.execute(create_schema_query.format(schema_name=schema_name))
+
+def create_schemas(db_engine: Engine = None):
+    """Create all schemas defined in the Schema enum"""
+    if db_engine is None:
+        raise CreateDatabaseFailException("Database engine is not provided.")
+
+    for schema in Schema:
+        create_schema(db_engine, schema.value)
+
+def create_database_if_not_exists():
+    db_engine = sys_engine if sys_engine \
+        else create_engine(settings.SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
+
+    if not database_exists(db_engine):
+        create_database(db_engine, settings.DATABASE_NAME)
+
+    create_schemas(db_engine)
+
+
 def get_engine():
     """Get SQLAlchemy engine"""
-    db_engine = sys_engine if sys_engine\
-          else create_engine(settings.SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
+    db_engine = sys_engine if sys_engine \
+        else create_engine(settings.SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
 
-    if not database_exists(db_engine.url):
+    if not database_exists(db_engine):
         create_database(db_engine, settings.DATABASE_NAME)
 
     return db_engine
@@ -81,7 +124,7 @@ session_factory = sessionmaker(
 )
 
 @contextmanager
-def get_db_session() -> Generator[Session]:
+def get_db_session() -> Generator[Session, None, None]:
     """Provide a transactional scope around a series of operations."""
     db = session_factory()
     try:

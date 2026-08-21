@@ -1,14 +1,21 @@
 from logging.config import fileConfig
+from tracemalloc import start
+from venv import create
 
 from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import pool, text
 
 from alembic import context
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
-from shared_kernel.infra.database.orm import metadata
+from shared_kernel.infra.database.registry import metadata_object
 from shared_kernel.infra.fastapi.config import settings
+from shared_kernel.infra.database.orm import init_orm_mappers
+from shared_kernel.infra.database.connection import create_database_if_not_exists
+
+create_database_if_not_exists()
+init_orm_mappers()
 
 config = context.config
 
@@ -21,7 +28,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = metadata
+target_metadata = metadata_object
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -29,6 +36,7 @@ target_metadata = metadata
 # ... etc.
 
 database_url = settings.SQLALCHEMY_DATABASE_URL
+version_table_schema = config.get_main_option("version_table_schema")
 
 
 def run_migrations_offline() -> None:
@@ -48,6 +56,9 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+
+        include_schemas=True, 
+        version_table_schema=version_table_schema,
     )
 
     with context.begin_transaction():
@@ -70,8 +81,16 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        if version_table_schema:
+            schema_name = version_table_schema.strip()
+            if schema_name and schema_name != "public":
+                connection.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema_name};"))
+
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            version_table_schema=version_table_schema,
+            include_schemas=True,
         )
 
         with context.begin_transaction():

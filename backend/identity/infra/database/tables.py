@@ -16,13 +16,13 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import UUID, INET, JSONB
 
-from shared_kernel.infra.database.registry import metadata
+from shared_kernel.infra.database.registry import metadata_object
 from shared_kernel.infra.database.schema import Schema
 from identity.domain.entity.user_status import UserStatus
 
 users_table = Table(
     "users",
-    metadata,
+    metadata_object,
     Column("id", UUID, primary_key=True, server_default=text("gen_random_uuid()")),
     Column("username", TEXT, nullable=False, unique=True),
     Column("email", TEXT, nullable=False, unique=True),
@@ -45,11 +45,11 @@ users_table = Table(
 
 password_credentials_table = Table(
     "password_credentials",
-    metadata,
+    metadata_object,
     Column("user_id", UUID, primary_key=True),
     Column("password_hash", TEXT, nullable=False),
     Column("password_changed_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
-    Column("must_change_password", BOOLEAN, nullable=False, server_default=text("0")),
+    Column("must_change_password", BOOLEAN, nullable=False, server_default=text("false")),
     Column("failed_attempt_count", Integer, nullable=False, server_default=text("0")),
     Column("locked_until", DateTime(timezone=True), nullable=True),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
@@ -65,12 +65,12 @@ password_credentials_table = Table(
 
 roles_table = Table(
     "roles",
-    metadata,
+    metadata_object,
     Column("id", UUID, primary_key=True, server_default=text("gen_random_uuid()")),
     Column("code", TEXT, nullable=False, unique=True),
     Column("name", String(150), nullable=False),
     Column("description", TEXT, nullable=True),
-    Column("is_system", BOOLEAN, nullable=False, server_default=text("0")),
+    Column("is_system", BOOLEAN, nullable=False, server_default=text("false")),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
     Column("updated_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
 
@@ -81,7 +81,7 @@ roles_table = Table(
 
 permissions_table = Table(
     "permissions",
-    metadata,
+    metadata_object,
     Column("id", UUID, primary_key=True, server_default=text("gen_random_uuid()")),
     Column("code", TEXT, nullable=False, unique=True),
     Column("description", TEXT, nullable=True),
@@ -95,7 +95,7 @@ permissions_table = Table(
 
 user_roles_table = Table(
     "user_roles",
-    metadata,
+    metadata_object,
     Column("user_id", UUID, primary_key=True),
     Column("role_id", UUID, primary_key=True),
     Column("assigned_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
@@ -116,7 +116,7 @@ user_roles_table = Table(
 
 sessions_table = Table(
     "sessions",
-    metadata,
+    metadata_object,
     Column("id", UUID, primary_key=True, server_default=text("gen_random_uuid()")),
     Column("user_id", UUID, nullable=False),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
@@ -139,7 +139,7 @@ sessions_table = Table(
 
 refresh_tokens_table = Table(
     "refresh_tokens",
-    metadata,
+    metadata_object,
     Column("id", UUID, primary_key=True, server_default=text("gen_random_uuid()")),
     Column("session_id", UUID, nullable=False),
     Column("token_hash", LargeBinary(32), nullable=False, unique=True),
@@ -173,7 +173,7 @@ refresh_tokens_table = Table(
 
 action_tokens_table = Table(
     "action_tokens",
-    metadata,
+    metadata_object,
     Column("id", UUID, primary_key=True, server_default=text("gen_random_uuid()")),
     Column("user_id", UUID, nullable=False),
     Column("purpose", String(24), nullable=False),
@@ -201,12 +201,12 @@ action_tokens_table = Table(
 
 auth_events_table = Table(
     "auth_events",
-    metadata,
+    metadata_object,
     Column("id", BigInteger, primary_key=True, autoincrement=True),
     Column("user_id", UUID, nullable=True),
     Column("session_id", UUID, nullable=True),
     Column("event_type", String(60), nullable=False),
-    Column("success", BOOLEAN, nullable=False),
+    Column("success", BOOLEAN, nullable=False, server_default=text("false")),
     Column("ip_address", INET, nullable=True),
     Column("user_agent", TEXT, nullable=True),
     Column("metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb")),

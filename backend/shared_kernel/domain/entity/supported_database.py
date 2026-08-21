@@ -2,7 +2,7 @@
 
 from sqlalchemy import Enum
 
-from clone_kiot_viet.backend.shared_kernel.domain.entity.value_object import ValueObject
+from shared_kernel.domain.entity.value_object import ValueObject
 
 
 class SupportedDatabase(ValueObject, str, Enum):

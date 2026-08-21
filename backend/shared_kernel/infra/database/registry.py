@@ -12,3 +12,4 @@ naming_convention = {
 
 metadata = MetaData(naming_convention=naming_convention)
 mapper_registry = registry(metadata=metadata)
+metadata_object = mapper_registry.metadata
