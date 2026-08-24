@@ -16,14 +16,16 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import UUID, INET, JSONB
 
+from shared_kernel.domain.entity.permission_code import PERMISSION_PATTERN_STR
 from shared_kernel.infra.database.registry import metadata_object
 from shared_kernel.infra.database.schema import Schema
 from identity.domain.entity.user_status import UserStatus
+from shared_kernel.infra.database.types.permission_code_type import PermissionCodeType
 
 users_table = Table(
     "users",
     metadata_object,
-    Column("id", UUID, primary_key=True, server_default=text("gen_random_uuid()")),
+    Column("id", UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")),
     Column("username", TEXT, nullable=False, unique=True),
     Column("email", TEXT, nullable=False, unique=True),
     Column("display_name", String(150), nullable=True),
@@ -46,7 +48,7 @@ users_table = Table(
 password_credentials_table = Table(
     "password_credentials",
     metadata_object,
-    Column("user_id", UUID, primary_key=True),
+    Column("user_id", UUID(as_uuid=True), primary_key=True),
     Column("password_hash", TEXT, nullable=False),
     Column("password_changed_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
     Column("must_change_password", BOOLEAN, nullable=False, server_default=text("false")),
@@ -66,7 +68,7 @@ password_credentials_table = Table(
 roles_table = Table(
     "roles",
     metadata_object,
-    Column("id", UUID, primary_key=True, server_default=text("gen_random_uuid()")),
+    Column("id", UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")),
     Column("code", TEXT, nullable=False, unique=True),
     Column("name", String(150), nullable=False),
     Column("description", TEXT, nullable=True),
@@ -82,13 +84,13 @@ roles_table = Table(
 permissions_table = Table(
     "permissions",
     metadata_object,
-    Column("id", UUID, primary_key=True, server_default=text("gen_random_uuid()")),
-    Column("code", TEXT, nullable=False, unique=True),
+    Column("id", UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")),
+    Column("code", PermissionCodeType, nullable=False, unique=True),
     Column("description", TEXT, nullable=True),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
     Column("updated_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
 
-    CheckConstraint("code::text ~ '^[a-z][a-z0-9)_.:-]*$'", name="code"),
+    CheckConstraint(f"code::text ~ '{PERMISSION_PATTERN_STR}'", name="code"),
 
     schema=Schema.IDENTITY.value
 )
@@ -96,11 +98,11 @@ permissions_table = Table(
 user_roles_table = Table(
     "user_roles",
     metadata_object,
-    Column("user_id", UUID, primary_key=True),
-    Column("role_id", UUID, primary_key=True),
+    Column("user_id", UUID(as_uuid=True), primary_key=True),
+    Column("role_id", UUID(as_uuid=True), primary_key=True),
     Column("assigned_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
-    Column("assigned_by", UUID, nullable=True),
-    Column("expired_at", DateTime(timezone=True), nullable=False),
+    Column("assigned_by", UUID(as_uuid=True), nullable=True),
+    Column("expired_at", DateTime(timezone=True), nullable=True),
 
     ForeignKeyConstraint(["user_id"], [f"{Schema.IDENTITY.value}.users.id"]),
     ForeignKeyConstraint(["role_id"], [f"{Schema.IDENTITY.value}.roles.id"]),
@@ -114,11 +116,27 @@ user_roles_table = Table(
     schema=Schema.IDENTITY.value
 )
 
+role_permissions_table = Table(
+    "role_permissions",
+    metadata_object,
+    Column("role_id", UUID(as_uuid=True), primary_key=True),
+    Column("permission_id", UUID(as_uuid=True), primary_key=True),
+    Column("granted_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
+
+    ForeignKeyConstraint(["role_id"], [f"{Schema.IDENTITY.value}.roles.id"], ondelete="CASCADE"),
+    ForeignKeyConstraint(["permission_id"], [f"{Schema.IDENTITY.value}.permissions.id"], ondelete="CASCADE"),
+
+    Index("ix_role_permissions_role_id", "role_id"),
+    Index("ix_role_permissions_permission_id", "permission_id"),
+
+    schema=Schema.IDENTITY.value,
+)
+
 sessions_table = Table(
     "sessions",
     metadata_object,
-    Column("id", UUID, primary_key=True, server_default=text("gen_random_uuid()")),
-    Column("user_id", UUID, nullable=False),
+    Column("id", UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")),
+    Column("user_id", UUID(as_uuid=True), nullable=False),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
     Column("last_seen_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
     Column("expires_at", DateTime(timezone=True), nullable=False),
@@ -140,10 +158,10 @@ sessions_table = Table(
 refresh_tokens_table = Table(
     "refresh_tokens",
     metadata_object,
-    Column("id", UUID, primary_key=True, server_default=text("gen_random_uuid()")),
-    Column("session_id", UUID, nullable=False),
+    Column("id", UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")),
+    Column("session_id", UUID(as_uuid=True), nullable=False),
     Column("token_hash", LargeBinary(32), nullable=False, unique=True),
-    Column("parent_token_id", UUID, nullable=True),
+    Column("parent_token_id", UUID(as_uuid=True), nullable=True),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
     Column("expires_at", DateTime(timezone=True), nullable=False),
     Column("used_at", DateTime(timezone=True), nullable=True),
@@ -174,8 +192,8 @@ refresh_tokens_table = Table(
 action_tokens_table = Table(
     "action_tokens",
     metadata_object,
-    Column("id", UUID, primary_key=True, server_default=text("gen_random_uuid()")),
-    Column("user_id", UUID, nullable=False),
+    Column("id", UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")),
+    Column("user_id", UUID(as_uuid=True), nullable=False),
     Column("purpose", String(24), nullable=False),
     Column("token_hash", LargeBinary(32), nullable=False),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=text("now()")),
@@ -203,8 +221,8 @@ auth_events_table = Table(
     "auth_events",
     metadata_object,
     Column("id", BigInteger, primary_key=True, autoincrement=True),
-    Column("user_id", UUID, nullable=True),
-    Column("session_id", UUID, nullable=True),
+    Column("user_id", UUID(as_uuid=True), nullable=True),
+    Column("session_id", UUID(as_uuid=True), nullable=True),
     Column("event_type", String(60), nullable=False),
     Column("success", BOOLEAN, nullable=False, server_default=text("false")),
     Column("ip_address", INET, nullable=True),

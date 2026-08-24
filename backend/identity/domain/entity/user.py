@@ -1,5 +1,6 @@
 """User entity module"""
 from dataclasses import dataclass, field
+from identity.domain.entity.user_role import UserRole
 from shared_kernel.domain.entity.entity import AggregateRoot
 from identity.domain.entity.user_status import UserStatus
 from datetime import UTC, datetime
@@ -17,6 +18,13 @@ class User(AggregateRoot):
     last_login_at: datetime | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+    _role_links: list["UserRole"] = field(default_factory=list, init=False, repr=False)
+
+    @property
+    def RoleLinks(self) -> tuple["UserRole", ...]:
+        """Read-only navigation to role links associated with this user."""
+        return tuple(self._role_links)
 
     def __post_init__(self):
         """Validate core user invariants."""

@@ -1,8 +1,15 @@
 """User Role entity module"""
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from uuid import UUID
 from shared_kernel.domain.entity.entity import Entity
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
+    
+if TYPE_CHECKING:
+    from identity.domain.entity.user import User
+    from identity.domain.entity.role import Role
 
 # This represents a composite key in the database, combining user_id and role_id to uniquely identify a user role.
 @dataclass(eq=False, slots=True)
@@ -27,6 +34,19 @@ class UserRole(Entity[UserRoleId]):
     assigned_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     assigned_by: UUID | None = None
     expires_at: datetime | None = None
+
+    _user: User | None = field(default=None, init=False, repr=False)
+    _role: Role | None = field(default=None, init=False, repr=False)
+
+    @property
+    def User(self) -> User | None:
+        """Read-only navigation to the user associated with this role."""
+        return self._user
+
+    @property
+    def Role(self) -> Role | None:
+        """Read-only navigation to the role associated with this user."""
+        return self._role
 
     def __post_init__(self):
         """Post-initialization to ensure the identity is set correctly."""

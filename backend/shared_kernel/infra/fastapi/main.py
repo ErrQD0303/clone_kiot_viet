@@ -3,8 +3,10 @@ from logging import getLogger
 
 from fastapi import FastAPI
 
+from identity.presentation.rest.api import identity_router, user_router
+
 from shared_kernel.infra.database.orm import init_orm_mappers
-from shared_kernel.infra.container import AppContainer
+from bootstrap.container import AppContainer
 from shared_kernel.infra.logging import configure_logging
 
 configure_logging()
@@ -22,7 +24,8 @@ app = FastAPI(
 )
 
 app.container = app_container
-# app.include_router(reception_api.router)
+app.include_router(identity_router)
+app.include_router(user_router)
 
 init_orm_mappers()
 

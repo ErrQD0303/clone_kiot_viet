@@ -6,8 +6,14 @@ from typing import Protocol
 class UnitOfWork(Protocol):
     """Unit of Work pattern implementation for managing database transactions."""
 
-    def commit(self):
+    async def commit(self):
         """Commit the current transaction."""
 
-    def rollback(self):
+    async def rollback(self):
         """Rollback the current transaction."""
+
+    async def start(self):
+        """Start a new transaction."""
+
+    async def flush(self):
+        """Flush the current transaction."""

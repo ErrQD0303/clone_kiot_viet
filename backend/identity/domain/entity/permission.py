@@ -3,14 +3,19 @@ from dataclasses import dataclass, field
 from shared_kernel.domain.entity.entity import AggregateRoot
 from datetime import UTC, datetime
 
+from shared_kernel.domain.entity.permission_code import PermissionCode
+from identity.domain.entity.role_permission import RolePermission
+
 # Turn off the equality comparison and hash generation for the User class
 @dataclass(eq=False, slots=True)
 class Permission(AggregateRoot):
     """Permission entity representing a permission belonged to a user entity in a system."""
-    code: str
+    code: PermissionCode
     description: str | None = None
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+    _permission_links: list["RolePermission"] = field(default_factory=list, init=False, repr=False)
 
     def __post_init__(self):
         """Validate permission invariants."""
@@ -22,3 +27,13 @@ class Permission(AggregateRoot):
 
         if self.updated_at.tzinfo is None or self.updated_at.utcoffset() is None:
             raise ValueError("updated_at must be timezone-aware")
+
+    @classmethod
+    def create(cls, code: str, description: str | None = None) -> "Permission":
+        """Factory method to create a new Permission instance."""
+        return cls(code=code, description=description)
+
+    def change_description(self, new_description: str | None):
+        """Change the description of the permission."""
+        self.description = new_description
+        self.updated_at = datetime.now(UTC)

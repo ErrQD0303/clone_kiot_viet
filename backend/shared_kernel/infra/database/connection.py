@@ -1,10 +1,11 @@
 """Database connection module"""
-from contextlib import contextmanager
-from typing import Generator
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 
 from sqlalchemy import create_engine, inspect
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.engine import Engine, URL
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from shared_kernel.domain.exception.create_database_fail_exception import CreateDatabaseFailException
 from shared_kernel.infra.database.schema import Schema
@@ -116,18 +117,23 @@ def get_engine():
     return db_engine
 
 engine = get_engine()
-session_factory = sessionmaker(
+async_database_url = settings.SQLALCHEMY_DATABASE_URL.replace(
+    "postgresql://", "postgresql+asyncpg://", 1
+)
+async_engine = create_async_engine(async_database_url, pool_pre_ping=True)
+async_session_factory = sessionmaker(
+    bind=async_engine,
+    class_=AsyncSession,
     autocommit=False,
     autoflush=False,
     expire_on_commit=False,
-    bind=engine
 )
 
-@contextmanager
-def get_db_session() -> Generator[Session, None, None]:
-    """Provide a transactional scope around a series of operations."""
-    db = session_factory()
+@asynccontextmanager
+async def get_async_db_session() -> AsyncGenerator[AsyncSession, None]:
+    """Provide an asynchronous transactional database session."""
+    db = async_session_factory()
     try:
         yield db
     finally:
-        db.close()
+        await db.close()
