@@ -14,6 +14,8 @@ from identity.infra.repository.sqlalchemy_user_repository import SQLAlchemyUserR
 from shared_kernel.infra.database.connection import async_session_factory
 from shared_kernel.infra.database.orm import init_orm_mappers
 from shared_kernel.infra.sql_alchemy_unitofwork import SQLAlchemyUnitOfWork
+from identity.presentation.rest.registration import identity_fastapi_module
+from shared_kernel.infra.fastapi.registration import FastAPIModule, install_fastapi_modules
 
 
 @asynccontextmanager
@@ -29,7 +31,8 @@ class AppContainer(containers.DeclarativeContainer):  # pylint: disable=c-extens
     wiring_config = containers.WiringConfiguration(  # pylint: disable=c-extension-no-member
         modules=[
             "identity.presentation.rest.api",
-        ]
+        ],
+        warn_unresolved=True, # Warn if dependencies cannot be resolved
     )
 
     session_factory = providers.Object(async_session_factory)
@@ -66,7 +69,18 @@ class AppContainer(containers.DeclarativeContainer):  # pylint: disable=c-extens
         unit_of_work=unit_of_work,
     )
 
+    fastapi_modules = providers.List(
+        providers.Object(identity_fastapi_module),
+        # Add another modules below here
+    )
+
+    install_fastapi = providers.Callable(
+        install_fastapi_modules,
+        modules=fastapi_modules ,
+    )
+
 def create_application_container() -> AppContainer:
     """Create and return an instance of the application container."""
     init_orm_mappers()
     return AppContainer()
+

@@ -24,8 +24,7 @@ app = FastAPI(
 )
 
 app.container = app_container
-app.include_router(identity_router)
-app.include_router(user_router)
+app.container.install_fastapi(app=app)
 
 init_orm_mappers()
 
