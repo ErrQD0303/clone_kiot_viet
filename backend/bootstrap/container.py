@@ -11,11 +11,13 @@ from identity.domain.repository import user_repository
 from identity.infra.repository.sqlalchemy_permission_repository import SQLAlchemyPermissionRepository
 from identity.infra.repository.sqlalchemy_role_repository import SQLAlchemyRoleRepository
 from identity.infra.repository.sqlalchemy_user_repository import SQLAlchemyUserRepository
+from identity.infra.token.pyjwt_token_handler import PyJWTTokenHandler, get_token_handler
 from shared_kernel.infra.database.connection import async_session_factory
 from shared_kernel.infra.database.orm import init_orm_mappers
 from shared_kernel.infra.sql_alchemy_unitofwork import SQLAlchemyUnitOfWork
 from identity.presentation.rest.registration import identity_fastapi_module
 from shared_kernel.infra.fastapi.registration import FastAPIModule, install_fastapi_modules
+from shared_kernel.infra.fastapi.config import settings
 
 
 @asynccontextmanager
@@ -78,6 +80,16 @@ class AppContainer(containers.DeclarativeContainer):  # pylint: disable=c-extens
         install_fastapi_modules,
         modules=fastapi_modules ,
     )
+
+    token_handler = providers.Singleton(
+        get_token_handler,
+        secret_key=settings.SECRET_KEY,  # Replace with your actual secret key
+        algorithm=settings.ALGORITHM,  # Replace with your actual algorithm
+        access_token_expiration_minute=int(settings.ACCESS_TOKEN_EXPIRE_MINUTES),  # Replace
+        refresh_token_expiration_minute=int(settings.REFRESH_TOKEN_EXPIRE_MINUTES),  # Replace
+        token_type=settings.TOKEN_TYPE,  # Replace with your actual token type
+    )
+
 
 def create_application_container() -> AppContainer:
     """Create and return an instance of the application container."""

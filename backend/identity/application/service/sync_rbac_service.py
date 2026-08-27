@@ -1,6 +1,6 @@
 """Define the Sync RBAC Service"""
 from bootstrap.rbac_manifest import RbacManifest
-from identity.application.service.sync_rbac_result import SyncRbacResult
+from identity.application.service.models.sync_rbac_result import SyncRbacResult
 from identity.domain.authorization.identity_role import IdentityRole
 from identity.domain.entity.permission import Permission
 from identity.domain.entity.role import Role

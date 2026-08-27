@@ -1,9 +1,13 @@
 """Define concrete implementation of the UserRepository using SQLAlchemy."""
+from typing import Any
+from uuid import UUID
+
 from sqlalchemy import select
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import raiseload, selectinload
 
+from identity.domain.entity.session import Session
 from identity.domain.repository.user_repository import UserRepository
 from identity.domain.entity.user import User
 
@@ -14,27 +18,33 @@ class SQLAlchemyUserRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_all_users(self, include_roles: bool = False) -> list[User]:
+    @staticmethod
+    async def _build_user_query(statement: Any, with_roles: bool = False, with_sessions: bool = False, with_refresh_tokens: bool = False):
+        """Build a SQLAlchemy query for retrieving users with optional related data."""
+        if not with_roles:
+            statement = statement.options(raiseload(User._role_links))
+        if not with_sessions:
+            statement = statement.options(raiseload(User._session_links))
+        else:
+            if not with_refresh_tokens:
+                statement = statement.options(raiseload(User._session_links).raiseload(Session._refresh_token_links))
+        return statement
+
+    async def get_all_users(self, with_roles: bool = False, with_sessions: bool = False, with_refresh_tokens: bool = False) -> list[User]:
             """Get all users in the repository."""
-            statement = select(User)
-            if not include_roles:
-                statement = statement.options(raiseload(User._role_links))
+            statement = self._build_user_query(statement=select(User),with_roles=with_roles, with_sessions=with_sessions, with_refresh_tokens=with_refresh_tokens)
             result: Result = await self.session.execute(statement)
             return list(result.scalars().all())
 
-    async def get_user_by_username(self, username: str, include_roles: bool = False) -> User | None:
+    async def get_user_by_username(self, username: str, with_roles: bool = False, with_sessions: bool = False, with_refresh_tokens: bool = False) -> User | None:
         """Get a user by their username."""
-        statement = select(User).where(User.username == username)
-        if not include_roles:
-            statement = statement.options(raiseload(User._role_links))
+        statement = self._build_user_query(statement=select(User).where(User.username==username), with_roles=with_roles, with_sessions=with_sessions, with_refresh_tokens=with_refresh_tokens)        
         result: Result = await self.session.execute(statement)
         return result.scalar_one_or_none()
 
-    async def get_by_id(self, user_id: str, include_roles: bool = False) -> User | None:
+    async def get_by_id(self, user_id: UUID, with_roles: bool = False, with_sessions: bool = False, with_refresh_tokens: bool = False) -> User | None:
         """Get a user by their unique identifier."""
-        statement = select(User).where(User.id == user_id)
-        if not include_roles:
-            statement = statement.options(raiseload(User._role_links))
+        statement = self._build_user_query(statement=select(User).where(User.id==id),with_roles=with_roles, with_sessions=with_sessions, with_refresh_tokens=with_refresh_tokens)
         result: Result = await self.session.execute(statement)
         return result.scalar_one_or_none()
 
@@ -42,17 +52,21 @@ class SQLAlchemyUserRepository:
         """Create a new user in the repository."""
         self.session.add(user)
 
-    async def update_user_by_id(self, user: User):
+    async def update_user_by_id(self, user):
         """Update an existing user in the repository."""
         existing_user = await self.get_by_id(user.id)
         if existing_user:
             existing_user.display_name = user.display_name
             existing_user.username = user.username
             existing_user.password = user.password
+            existing_user.is_active = user.is_active
+            existing_user.updated_at = user.updated_at
+            existing_user._role_links = user._role_links
+            existing_user._session_links = user._session_links
 
-    async def delete_user_by_id(self, user):
+    async def delete_user_by_id(self, user_id: UUID):
         """Delete a user from the repository."""
-        existing_user = await self.get_by_id(user.id)
+        existing_user = await self.get_by_id(user_id)
         if existing_user:
             self.session.delete(existing_user)
             # Commit later in the unit of work to allow for transaction management

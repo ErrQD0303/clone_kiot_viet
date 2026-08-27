@@ -1,5 +1,6 @@
 """User entity module"""
 from dataclasses import dataclass, field
+from identity.domain.entity.session import Session
 from identity.domain.entity.user_role import UserRole
 from shared_kernel.domain.entity.entity import AggregateRoot
 from identity.domain.entity.user_status import UserStatus
@@ -20,11 +21,31 @@ class User(AggregateRoot):
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     _role_links: list["UserRole"] = field(default_factory=list, init=False, repr=False)
+    _session_links: list["Session"] = field(default_factory=list, init=False, repr=False)
 
     @property
     def RoleLinks(self) -> tuple["UserRole", ...]:
         """Read-only navigation to role links associated with this user."""
         return tuple(self._role_links)
+
+    @property
+    def SessionLinks(self) -> tuple["Session", ...]:
+        """Read-only navigation to session links associated with this user."""
+        return tuple(self._session_links)
+
+    @property
+    def Roles(self) -> tuple[str, ...]:
+        """Get the roles associated with this user."""
+        return tuple(role_link.Role.name for role_link in self._role_links)
+
+    @property
+    def RefreshTokens(self) -> tuple[str, ...]:
+        """Get the refresh tokens associated with this user."""
+        tokens = []
+        for session in self._session_links:
+            for refresh_token in session.RefreshTokenLinks:
+                tokens.append(refresh_token.token_hash.hex())
+        return tuple(tokens)
 
     def __post_init__(self):
         """Validate core user invariants."""

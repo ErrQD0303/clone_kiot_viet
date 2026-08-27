@@ -46,6 +46,13 @@ def start_identity_mappers():
                 cascade="all, delete-orphan",
                 lazy="selectin",
             ),
+            "_session_links": relationship(
+                "Session",
+                foreign_keys=[sessions_table.c.user_id],
+                back_populates="_user",
+                cascade="all, delete-orphan",
+                lazy="selectin",
+            ),
         }
     )
 
@@ -134,11 +141,34 @@ def start_identity_mappers():
     mapper_registry.map_imperatively(
         Session,
         sessions_table,
+        properties={
+            "_user": relationship(
+                User,
+                foreign_keys=[sessions_table.c.user_id],
+                back_populates="_sessions",
+                lazy="joined",
+            ),
+            "_refresh_token_links": relationship(
+                RefreshToken,
+                foreign_keys=[refresh_tokens_table.c.session_id],
+                back_populates="_session",
+                cascade="all, delete-orphan",
+                lazy="selectin",
+            ),
+        }
     )
 
     mapper_registry.map_imperatively(
         RefreshToken,
         refresh_tokens_table,
+        properties={
+            "_session": relationship(
+                Session,
+                foreign_keys=[refresh_tokens_table.c.session_id],
+                back_populates="_refresh_token_links",
+                lazy="joined",
+            ),
+        }
     )
 
     mapper_registry.map_imperatively(

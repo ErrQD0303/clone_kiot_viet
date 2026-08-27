@@ -15,4 +15,11 @@ class Setting(BaseSettings):
     SQLALCHEMY_DATABASE_URL: str = "mysql+pymysql://root:sh1n1ch1@127.0.0.1:3306/clone_kiot_viet"
     DATABASE_NAME: str = "clone_kiot_viet"
 
+    # Authentication and Authorization settings
+    SECRET_KEY: str = "mFJfs02fg2bMrEhTnIHdYCQ99hYwfaO5"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = 1440
+    TOKEN_TYPE: str = "Bearer"
+
 settings = Setting()

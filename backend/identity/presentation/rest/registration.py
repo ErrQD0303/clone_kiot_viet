@@ -3,7 +3,7 @@ from logging import getLogger
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 
-from identity.presentation.rest.response_error import UserNotFoundError, UserResponseError
+from identity.presentation.rest.models.response_error import UserNotFoundError, UserResponseError
 from identity.presentation.rest.api import identity_router
 from shared_kernel.infra.fastapi.registration import ExceptionHandlerRegistration, FastAPIModule
 

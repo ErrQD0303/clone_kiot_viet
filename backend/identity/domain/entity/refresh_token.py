@@ -3,8 +3,12 @@
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from uuid import UUID
+from typing import TYPE_CHECKING
 
 from shared_kernel.domain.entity.entity import AggregateRoot
+
+if TYPE_CHECKING:
+    from identity.domain.entity.session import Session
 
 
 @dataclass(eq=False, slots=True)
@@ -18,6 +22,19 @@ class RefreshToken(AggregateRoot):
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     used_at: datetime | None = None
     revoked_at: datetime | None = None
+
+    _session: "Session" = field(default=None, init=False, repr=False)
+
+    @property
+    def Session(self) -> "Session":
+        """Read-only navigation to the session associated with this refresh token."""
+        return self._session
+
+    @property
+    def Is_Valid(self)-> bool:
+        """Check whether the refresh token is valid (not expired, not revoked, and not used)."""
+        now = datetime.now(UTC)
+        return self.expires_at > now and self.revoked_at is None and self.used_at is None
 
     def __post_init__(self):
         """Validate hash and timestamp constraints."""
