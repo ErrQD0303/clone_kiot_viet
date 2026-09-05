@@ -1,41 +1,35 @@
-"""Define the FastAPI module registration utilities."""
+"""Define the Registration module for FastAPI applications in the shared kernel."""
 
-from collections.abc import Callable, Coroutine, Sequence
-from dataclasses import dataclass
-from typing import Any
-from fastapi import APIRouter, FastAPI
-from starlette.responses import Response
+import logging
 
+from fastapi import status, Request
+from fastapi.responses import JSONResponse
 
-ExceptionHandler = Callable[
-    ...,
-    Coroutine[Any, Any, Response]
-]
+from shared_kernel.infra.fastapi.exception import PasswordStrengthError
+from shared_kernel.infra.fastapi.model.error import PasswordStrengthResponseError
+from shared_kernel.infra.fastapi.registration_utility import ExceptionHandlerRegistration, FastAPIModule
 
-@dataclass(frozen=True, slots=True)
-class ExceptionHandlerRegistration:
-    exception_type: type[Exception]
-    handler: ExceptionHandler
+logging.getLogger(__name__)
 
-@dataclass(frozen=True, slots=True)
-class FastAPIModule:
-    routers: tuple[APIRouter, ...]
-    exception_handlers: tuple[ExceptionHandlerRegistration, ...] = ()
+async def handle_password_strength_error(_request: Request, exc: PasswordStrengthError):
+    """Handle PasswordStrengthError exceptions."""
+    logging.info(f"Password strength error: {exc.message}")
 
-def is_included_router_exist(router: APIRouter):
-    return len(router.routes) > 0
+    response = PasswordStrengthResponseError(
+        detail=exc.message
+    )
 
-def install_fastapi_modules(
-        app: FastAPI,
-        modules: Sequence[FastAPIModule],
-):
-    """Install FastAPI modules into the FastAPI application."""
-    for module in modules:
-        for router in module.routers:
-            app.include_router(router)
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,  # Unprocessable Entity
+        content=response.model_dump(mode="json")
+    )
 
-        for exc_handler in module.exception_handlers:
-            app.add_exception_handler(
-                exc_handler.exception_type,
-                exc_handler.handler
-            )
+shared_kernel_fastapi_module = FastAPIModule(
+    routers=(),
+    exception_handlers=[
+        ExceptionHandlerRegistration(
+            exception_type=PasswordStrengthError,
+            handler=handle_password_strength_error
+        )
+    ]
+)

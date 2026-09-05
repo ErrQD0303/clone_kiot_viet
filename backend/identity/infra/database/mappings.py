@@ -53,6 +53,14 @@ def start_identity_mappers():
                 cascade="all, delete-orphan",
                 lazy="selectin",
             ),
+            "_password_credential": relationship(
+                PasswordCredential,
+                foreign_keys=[password_credentials_table.c.user_id],
+                back_populates="_user",
+                uselist=False,
+                cascade="all, delete-orphan",
+                lazy="joined",
+            ),
         }
     )
 
@@ -62,6 +70,12 @@ def start_identity_mappers():
         properties={
             # Map DB PK/FK column user_id to the aggregate id in the domain model.
             "id": password_credentials_table.c.user_id,
+            "_user": relationship(
+                User,
+                foreign_keys=[password_credentials_table.c.user_id],
+                back_populates="_password_credential",
+                uselist=False,
+            ),
         },
     )
 
@@ -145,7 +159,7 @@ def start_identity_mappers():
             "_user": relationship(
                 User,
                 foreign_keys=[sessions_table.c.user_id],
-                back_populates="_sessions",
+                back_populates="_session_links",
                 lazy="joined",
             ),
             "_refresh_token_links": relationship(

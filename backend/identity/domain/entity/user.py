@@ -1,5 +1,6 @@
 """User entity module"""
 from dataclasses import dataclass, field
+from identity.domain.entity.password_credential import PasswordCredential
 from identity.domain.entity.session import Session
 from identity.domain.entity.user_role import UserRole
 from shared_kernel.domain.entity.entity import AggregateRoot
@@ -22,6 +23,7 @@ class User(AggregateRoot):
 
     _role_links: list["UserRole"] = field(default_factory=list, init=False, repr=False)
     _session_links: list["Session"] = field(default_factory=list, init=False, repr=False)
+    _password_credential: "PasswordCredential" = field(default=None, init=False, repr=False)
 
     @property
     def RoleLinks(self) -> tuple["UserRole", ...]:
@@ -37,6 +39,16 @@ class User(AggregateRoot):
     def Roles(self) -> tuple[str, ...]:
         """Get the roles associated with this user."""
         return tuple(role_link.Role.name for role_link in self._role_links)
+
+    @property
+    def PasswordCredential(self) -> "PasswordCredential":
+        """Get the password credential associated with this user."""
+        return self._password_credential
+
+    @property
+    def PasswordHash(self) -> str:
+        """Get the password hash of the current user"""
+        return self._password_credential.password_hash
 
     @property
     def RefreshTokens(self) -> tuple[str, ...]:
@@ -71,3 +83,42 @@ class User(AggregateRoot):
         if self.last_login_at is not None:
             if self.last_login_at.tzinfo is None or self.last_login_at.utcoffset() is None:
                 raise ValueError("last_login_at must be timezone-aware")
+
+    @classmethod
+    def create_user(
+        cls,
+        username: str,
+        password_hash: str,
+        email: str,
+        display_name: str | None = None,
+        status: UserStatus = UserStatus.ACTIVE,
+        auth_version: int = 1,
+    ) -> "User":
+        """Create a user from a password hash produced by the application layer."""
+        new_user = cls(
+            username=username,
+            email=email,
+            status=status,
+            auth_version=auth_version,
+            display_name=display_name,
+        )
+        new_user._password_credential = PasswordCredential(password_hash=password_hash)
+
+        return new_user
+
+    def change_password(self, password_hash: str, must_change_password: bool = False) -> None:
+        """Replace the password hash and invalidate credentials issued before the change."""
+        if not self._password_credential:
+            raise ValueError("user does not have a password credential")
+
+        now = datetime.now(UTC)
+        self._password_credential.password_hash = password_hash
+        self._password_credential.password_changed_at = now
+        self._password_credential.must_change_password = must_change_password
+        self._password_credential.failed_attempt_count = 0
+        self._password_credential.locked_until = None
+        self._password_credential.updated_at = now
+        self.auth_version += 1
+        self.updated_at = now
+
+        

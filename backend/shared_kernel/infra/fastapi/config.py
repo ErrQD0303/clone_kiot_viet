@@ -19,7 +19,19 @@ class Setting(BaseSettings):
     SECRET_KEY: str = "mFJfs02fg2bMrEhTnIHdYCQ99hYwfaO5"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    REFRESH_TOKEN_EXPIRE_MINUTES: int = 1440
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = 43200  # 30 days
     TOKEN_TYPE: str = "Bearer"
+    ISSUER: str = "clone_kiot_viet--backend"
+    AUDIENCE: str = "clone_kiot_viet--frontend"
+
+    # Session settings
+    SESSION_EXPIRE_MINUTES: int = 43200  # 30 days
+
+    # Admin user settings
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_EMAIL: str = "admin@datvipcrvn.com"
+    ADMIN_INITIAL_PASSWORD: str = "Admin@123!"  # Default password for the admin user
+    ADMIN_DISPLAY_NAME: str = "Administrator"  # Default display name for the admin user
+    
 
 settings = Setting()

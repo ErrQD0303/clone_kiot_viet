@@ -23,7 +23,7 @@ class RefreshToken(AggregateRoot):
     used_at: datetime | None = None
     revoked_at: datetime | None = None
 
-    _session: "Session" = field(default=None, init=False, repr=False)
+    _session: "Session" = field(init=False, repr=False)
 
     @property
     def Session(self) -> "Session":
@@ -33,7 +33,7 @@ class RefreshToken(AggregateRoot):
     @property
     def Is_Valid(self)-> bool:
         """Check whether the refresh token is valid (not expired, not revoked, and not used)."""
-        now = datetime.now(UTC)
+        now = datetime.now(tz=UTC)
         return self.expires_at > now and self.revoked_at is None and self.used_at is None
 
     def __post_init__(self):
@@ -60,3 +60,7 @@ class RefreshToken(AggregateRoot):
                 raise ValueError("revoked_at must be timezone-aware")
             if self.revoked_at < self.created_at:
                 raise ValueError("revoked_at must be equal to or later than created_at")
+
+    def revoke(self) -> None:
+        """Invalidate the refresh token by marking it as revoked."""
+        self.revoked_at = datetime.now(UTC)

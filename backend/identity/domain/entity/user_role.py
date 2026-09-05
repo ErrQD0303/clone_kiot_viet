@@ -61,3 +61,14 @@ class UserRole(Entity[UserRoleId]):
             """Get the identity of the entity."""
             return UserRoleId(user_id=self.user_id, role_id=self.role_id)
 
+    @classmethod
+    def grant_role(cls, user: User, role: Role, assigned_by: UUID | None = None, expires_at: datetime | None = None) -> UserRole:
+        """Grant a role to a user."""
+        return cls(
+            user_id=user.id,
+            role_id=role.id,
+            assigned_at=datetime.now(UTC),
+            assigned_by=assigned_by,
+            expires_at=expires_at
+        )
+

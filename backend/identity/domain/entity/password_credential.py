@@ -2,8 +2,12 @@
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from shared_kernel.domain.entity.entity import AggregateRoot
+
+if TYPE_CHECKING:
+    from identity.domain.entity.user import User
 
 @dataclass(eq=False, slots=True)
 class PasswordCredential(AggregateRoot):
@@ -15,6 +19,13 @@ class PasswordCredential(AggregateRoot):
     locked_until: datetime | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+    _user: "User" = field(default=None, init=False, repr=False)
+
+    @property
+    def User(self):
+        """Get the User associated with this Password Credential"""
+        return self._user
 
     def __post_init__(self):
         """Validate password credential invariants."""

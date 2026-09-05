@@ -7,7 +7,7 @@ import os
 def load_plugins():
     """Load plugins for FastAPI."""
     # Implement plugin loading logic here
-    plugins_dir = "/bootstrap/plugins"
+    plugins_dir = "./bootstrap/plugins"
 
     if not os.path.exists(plugins_dir):
         return
@@ -15,6 +15,6 @@ def load_plugins():
     for file_name in os.listdir(plugins_dir):
         if file_name.endswith(".py") and file_name != "__init__.py":
             module_name = file_name[:-3]  # Remove the .py extension
-            module_path = f"plugins.{module_name}"
+            module_path = f"bootstrap.plugins.{module_name}"
 
             importlib.import_module(module_path)

@@ -1,12 +1,13 @@
 """Session entity module."""
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 from typing import TYPE_CHECKING
 
 from identity.domain.entity.refresh_token import RefreshToken
 from shared_kernel.domain.entity.entity import AggregateRoot
+from shared_kernel.infra.fastapi.config import settings
 
 if TYPE_CHECKING:
     from identity.domain.entity.user import User
@@ -24,7 +25,7 @@ class Session(AggregateRoot):
     ip_address: str | None = None
     user_agent: str | None = None
 
-    _user: "User" = field(default=None, init=False, repr=False)
+    _user: "User" = field(init=False, repr=False)
     _refresh_token_links: list[RefreshToken] = field(default_factory=list, init=False, repr=False)
 
     @property
@@ -56,9 +57,11 @@ class Session(AggregateRoot):
             raise ValueError("revoke_reason must be at most 50 characters")
 
     @classmethod
-    def create(cls, user_id: UUID, expires_at: datetime, ip_address: str | None = None, user_agent: str | None = None) -> "Session":
+    def create(cls, user_id: UUID, ip_address: str | None = None, user_agent: str | None = None, session_expired_minute: int = 43200) -> "Session":
         """Factory method to create a new Session instance."""
-        return cls(user_id=user_id, expires_at=expires_at, ip_address=ip_address, user_agent=user_agent)
+        created_at = datetime.now(UTC)
+        expires_at = created_at + timedelta(minutes=settings.SESSION_EXPIRE_MINUTES)  # Default session expiration time of
+        return cls(user_id=user_id, created_at=created_at, expires_at=expires_at, ip_address=ip_address, user_agent=user_agent)
 
     def revoke(self, reason: str) -> None:
         """Revoke the session with a given reason."""
@@ -67,6 +70,9 @@ class Session(AggregateRoot):
         self.revoked_at = datetime.now(UTC)
         self.revoke_reason = reason
         self.update_last_seen()
+
+        for token in filter(lambda t: t.Is_Valid, self._refresh_token_links):
+            token.revoke()
 
     def update_last_seen(self) -> None:
         """Update the last seen timestamp for the session."""

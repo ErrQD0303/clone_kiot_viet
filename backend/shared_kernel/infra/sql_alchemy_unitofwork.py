@@ -1,36 +1,59 @@
 """Define SQLAlchemyUnitOfWork for managing database transactions using SQLAlchemy."""
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from shared_kernel.domain.unit_of_work import UnitOfWork
-
 class SQLAlchemyUnitOfWork:
-    """Unit of Work pattern implementation for managing database transactions using SQLAlchemy."""
-
+    """SQLAlchemyUnitOfWork for managing database transactions using SQLAlchemy."""
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def commit(self):
-        """Commit the current transaction."""
+    async def __aenter__(self):
+        if self.session.in_transaction():
+            raise RuntimeError(
+                "Cannot enter Unit of Work: "
+                "a transaction has already started."
+            )
+
+        await self.session.begin()
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type,
+        exc_value,
+        traceback,
+    ):
+        if exc_type is not None:
+            await self.rollback()
+            return False
+
+        try:
+            await self.commit()
+        except BaseException:
+            await self.rollback()
+            raise
+
+        return False # Indicate that exceptions should not be suppressed
+
+    async def commit(self) -> None:
+        if not self.session.in_transaction():
+            raise RuntimeError(
+                "Cannot commit: no active transaction."
+            )
+
         if not self.session.is_active:
-            raise RuntimeError("Cannot commit: No active transaction.")
+            raise RuntimeError(
+                "Cannot commit: transaction requires rollback."
+            )
+
         await self.session.commit()
 
-    async def rollback(self):
-        """Rollback the current transaction."""
-        await self.session.rollback()
-
-    async def start(self):
-        """Start a new transaction."""
+    async def rollback(self) -> None:
         if self.session.in_transaction():
-            raise RuntimeError("Cannot start a new transaction: Session is already active.")
-        await self.session.begin()
+            await self.session.rollback()
 
-    async def flush(self):
-        """Flush the current transaction."""
+    async def flush(self) -> None:
         if not self.session.in_transaction():
-            raise RuntimeError("Cannot flush: No active transaction.")
-        await self.session.flush()
+            raise RuntimeError(
+                "Cannot flush: no active transaction."
+            )
 
-def get_uow(session: AsyncSession) -> UnitOfWork:
-    """Dependency injection for SQLAlchemyUnitOfWork."""
-    return SQLAlchemyUnitOfWork(session)
+        await self.session.flush()
