@@ -52,7 +52,7 @@ class DatabaseTokenService:
             status=principal.status,
             display_name=principal.display_name,
             roles=principal.roles,
-            permissions=principal.permissions,
+            permissions=map(str, principal.permissions),
             session_id=str(new_session.id)  # Associate the access token with the session ID
         )
 
@@ -96,6 +96,7 @@ class DatabaseTokenService:
             status=principal.status,
             display_name=principal.display_name,
             roles=principal.roles,
+            permissions=map(str, principal.permissions),
             session_id=str(principal.session_id)  # Associate the access token with the session ID
         )
 

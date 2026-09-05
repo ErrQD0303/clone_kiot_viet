@@ -38,6 +38,7 @@ class AdminInitService:
         created_roles = 0
         added_grants = 0
         user_created = False
+        role_granted = False
 
         try:
             async with self._unit_of_work:
@@ -75,7 +76,7 @@ class AdminInitService:
 
                 role_codes = set({role.value for role in manifest.role_grants})
                 existing_roles = await self._role_repository.get_by_codes(role_codes)
-                roles_by_name = {role.name: role for role in existing_roles}
+                roles_by_name = {role.name.upper(): role for role in existing_roles}
 
                 for role_name, granted_codes in manifest.role_grants.items():
                     role_name_key = role_name.value.upper()
@@ -89,7 +90,7 @@ class AdminInitService:
                             description=new_role.name,
                         )
                         self._role_repository.create(role)
-                        roles_by_name[role_name] = role
+                        roles_by_name[role.name.upper()] = role
                         created_roles += 1
 
                     for permission_code in granted_codes:
@@ -103,7 +104,7 @@ class AdminInitService:
                         if role.grant(permission):
                             added_grants += 1
                 # Check if the admin user exists
-                admin_user = await self._user_repository.get_user_by_username("admin")
+                admin_user = await self._user_repository.get_user_by_username("admin", with_roles=True)
                 if admin_user is None:
                     username = self._setting.ADMIN_USERNAME
                     email = self._setting.ADMIN_EMAIL
@@ -118,16 +119,17 @@ class AdminInitService:
                         display_name=display_name,
                         )
 
-
                     self._user_repository.create_user(admin_user)
                     user_created = True
-                    await self._unit_of_work.flush() # Flush changes to the database to ensure the user is created before committing
 
-        except Exception as e:
-                print(f"An error occurred during admin initialization: {e}")
+                role_granted = admin_user.grant(roles_by_name[IdentityRole.ADMIN.name])
+
+        except Exception:
+            raise
 
         return AdminInitResult(
             user_created=user_created,
+            role_granted=role_granted,
             permissions_created=created_permissions,
             permissions_updated=updated_permissions,
             roles_created=created_roles,

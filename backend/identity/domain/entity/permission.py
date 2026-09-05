@@ -15,7 +15,12 @@ class Permission(AggregateRoot):
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
-    _permission_links: list["RolePermission"] = field(default_factory=list, init=False, repr=False)
+    _role_links: list["RolePermission"] = field(init=False, repr=False)
+
+    @property
+    def RoleLinks(self) -> tuple["RolePermission", ...]:
+        """Read-only navigation to role links associated with this permission."""
+        return tuple(self._role_links)
 
     def __post_init__(self):
         """Validate permission invariants."""

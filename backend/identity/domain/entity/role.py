@@ -21,8 +21,8 @@ class Role(AggregateRoot):
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
-    _permission_links: list["RolePermission"] = field(default_factory=list, repr=False)
-    _user_links: list["UserRole"] = field(default_factory=list, repr=False)
+    _permission_links: list["RolePermission"] = field(init=False, repr=False)
+    _user_links: list["UserRole"] = field(init=False, repr=False)
 
     @property
     def PermissionLinks(self) -> tuple["RolePermission", ...]:

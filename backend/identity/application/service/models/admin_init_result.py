@@ -5,6 +5,7 @@ from dataclasses import dataclass
 class AdminInitResult:
     """Result of AdminInitService"""
     user_created: bool
+    role_granted: bool
     permissions_created: int
     permissions_updated: int
     roles_created: int

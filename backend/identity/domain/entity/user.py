@@ -1,6 +1,7 @@
 """User entity module"""
 from dataclasses import dataclass, field
 from identity.domain.entity.password_credential import PasswordCredential
+from identity.domain.entity.role import Role
 from identity.domain.entity.session import Session
 from identity.domain.entity.user_role import UserRole
 from shared_kernel.domain.entity.entity import AggregateRoot
@@ -21,8 +22,8 @@ class User(AggregateRoot):
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
-    _role_links: list["UserRole"] = field(default_factory=list, init=False, repr=False)
-    _session_links: list["Session"] = field(default_factory=list, init=False, repr=False)
+    _role_links: list["UserRole"] = field(init=False, repr=False)
+    _session_links: list["Session"] = field(init=False, repr=False)
     _password_credential: "PasswordCredential" = field(default=None, init=False, repr=False)
 
     @property
@@ -120,5 +121,17 @@ class User(AggregateRoot):
         self._password_credential.updated_at = now
         self.auth_version += 1
         self.updated_at = now
+
+    def grant(self, role: "Role") -> bool:
+        """Grant a role to the user."""
+        if any(link.Role.id == role.id for link in self._role_links):
+            return False  # Role already granted
+
+        new_link = UserRole.grant_role(user=self, role=role)
+        new_link._user = self
+        new_link._role = role
+        self._role_links.append(new_link)
+        role._user_links.append(new_link)
+        return True
 
         

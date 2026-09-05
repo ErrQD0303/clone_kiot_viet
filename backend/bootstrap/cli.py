@@ -40,6 +40,7 @@ async def admin_init_command() -> None:
 			f"\n\troles created={result.roles_created},",
 			f"\n\tgrants added={result.grants_added}",
 			f"\n\tadmin user created={result.user_created}",
+			f"\n\tadmin role granted={result.role_granted}",
 		)
 	finally:
 		await container.shutdown_resources()

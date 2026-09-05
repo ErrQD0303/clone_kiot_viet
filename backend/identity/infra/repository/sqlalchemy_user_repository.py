@@ -7,7 +7,10 @@ from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import raiseload, selectinload
 
+from identity.domain.entity.permission import Permission
+from identity.domain.entity.role import Role
 from identity.domain.entity.session import Session
+from identity.domain.entity.user_role import UserRole
 from identity.domain.repository.user_repository import UserRepository
 from identity.domain.entity.user import User
 
@@ -19,10 +22,13 @@ class SQLAlchemyUserRepository:
         self.session = session
 
     @staticmethod
-    def _build_user_query(statement: Any, with_roles: bool = False, with_sessions: bool = False, with_refresh_tokens: bool = False, with_password_credential: bool = False):
+    def _build_user_query(statement: Any, with_roles: bool = False, with_permissions: bool = False, with_sessions: bool = False, with_refresh_tokens: bool = False, with_password_credential: bool = False):
         """Build a SQLAlchemy query for retrieving users with optional related data."""
         if not with_roles:
             statement = statement.options(raiseload(User._role_links))
+        else:
+            if not with_permissions:
+                statement = statement.options(raiseload(User._role_links).raiseload(UserRole._role).raiseload(Role._permission_links).raiseload(Permission._role_links))
         if not with_sessions:
             statement = statement.options(raiseload(User._session_links))
         else:
@@ -38,15 +44,15 @@ class SQLAlchemyUserRepository:
             result: Result = await self.session.execute(statement)
             return list(result.scalars().all())
 
-    async def get_user_by_username(self, username: str, with_roles: bool = False, with_sessions: bool = False, with_refresh_tokens: bool = False, with_password_credential: bool = False) -> User | None:
+    async def get_user_by_username(self, username: str, with_roles: bool = False, with_permissions: bool = False, with_sessions: bool = False, with_refresh_tokens: bool = False, with_password_credential: bool = False) -> User | None:
         """Get a user by their username."""
-        statement = self._build_user_query(statement=select(User).where(User.username==username), with_roles=with_roles, with_sessions=with_sessions, with_refresh_tokens=with_refresh_tokens,with_password_credential=with_password_credential)        
+        statement = self._build_user_query(statement=select(User).where(User.username==username), with_roles=with_roles, with_sessions=with_sessions, with_refresh_tokens=with_refresh_tokens,with_password_credential=with_password_credential, with_permissions=with_permissions)        
         result: Result = await self.session.execute(statement)
         return result.scalar_one_or_none()
 
-    async def get_by_id(self, user_id: UUID, with_roles: bool = False, with_sessions: bool = False, with_refresh_tokens: bool = False, with_password_crerdential: bool = False) -> User | None:
+    async def get_by_id(self, user_id: UUID, with_roles: bool = False, with_permissions: bool = False, with_sessions: bool = False, with_refresh_tokens: bool = False, with_password_credential: bool = False) -> User | None:
         """Get a user by their unique identifier."""
-        statement = self._build_user_query(statement=select(User).where(User.id==user_id),with_roles=with_roles, with_sessions=with_sessions, with_refresh_tokens=with_refresh_tokens, with_password_credential=with_password_crerdential)
+        statement = self._build_user_query(statement=select(User).where(User.id==user_id),with_roles=with_roles, with_sessions=with_sessions, with_refresh_tokens=with_refresh_tokens, with_password_credential=with_password_credential, with_permissions=with_permissions)
         result: Result = await self.session.execute(statement)
         return result.scalar_one_or_none()
 

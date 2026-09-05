@@ -8,6 +8,7 @@ from identity.application.service.models.token import Token
 from identity.application.service.token_service import TokenService
 from identity.domain.entity.password_credential import PasswordCredential
 from identity.domain.entity.session import Session
+from identity.domain.entity.user import User
 from identity.domain.entity.user_status import UserStatus
 from identity.domain.repository.session_repository import SessionRepository
 from identity.domain.repository.user_repository import UserRepository
@@ -48,10 +49,11 @@ class ApplicationAuthenticationService:
     ) -> Token:
         """Authenticate a user and return a token pair (access and refresh tokens)."""
         async with self._unit_of_work:
-            user = await self._user_repository.get_user_by_username(
+            user: User | None = await self._user_repository.get_user_by_username(
                 username=username,
                 with_roles=True,
-                with_password_credential=True,
+                with_permissions=True,
+                with_password_credential=True
             )
 
             if user is None:
@@ -87,7 +89,11 @@ class ApplicationAuthenticationService:
                     status=user.status,
                     display_name=user.display_name,
                     roles=frozenset(role_link.Role.code for role_link in user.RoleLinks),
-                    permissions=frozenset(),
+                    permissions=frozenset(
+                        permission.code
+                        for role_link in user.RoleLinks
+                        for permission in role_link.Role.Permissions
+                    ),
                     session_id=current_user_valid_session.id  # Associate the principal with the existing session ID
                 )
                 
@@ -103,7 +109,10 @@ class ApplicationAuthenticationService:
                 status=user.status,
                 display_name=user.display_name,
                 roles=frozenset(role_link.Role.code for role_link in user.RoleLinks),
-                permissions=frozenset(),
+                permissions=frozenset(
+                    permission.code                    for role_link in user.RoleLinks
+                    for permission in role_link.Role.Permissions
+                ),
             )
 
             return await self._token_service.issue_token_pair(

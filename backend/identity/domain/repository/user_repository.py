@@ -9,10 +9,10 @@ class UserRepository(Protocol):
     async def get_all_users(self, with_roles: bool = False, with_sessions: bool = False, with_refresh_tokens: bool = False, with_password_credential: bool = False) -> list[User]:
         """Get all users in the repository."""
 
-    async def get_user_by_username(self, username: str, with_roles: bool = False, with_sessions: bool = False, with_refresh_tokens: bool = False, with_password_credential: bool = False) -> User | None:
+    async def get_user_by_username(self, username: str, with_roles: bool = False, with_permissions: bool = False, with_sessions: bool = False, with_refresh_tokens: bool = False, with_password_credential: bool = False) -> User | None:
         """Get a user by their username."""
 
-    async def get_by_id(self, user_id: UUID, with_roles: bool = False, with_sessions: bool = False, with_refresh_tokens: bool = False, with_password_credential: bool = False) -> User | None:
+    async def get_by_id(self, user_id: UUID, with_roles: bool = False, with_permissions: bool = False, with_sessions: bool = False, with_refresh_tokens: bool = False, with_password_credential: bool = False) -> User | None:
         """Get a user by their unique identifier."""
 
     def create_user(self, user: User):
