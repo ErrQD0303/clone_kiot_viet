@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from identity.application.exceptions import AccountNotActiveError, InvalidCredentialError
+from identity.application.exceptions import AccountNotActiveError, InvalidAccessTokenError, InvalidCredentialError
 from identity.application.service.i_password_hasher import IPasswordHasher
 from identity.application.service.models.token import Token
 from identity.application.service.token_service import TokenService
@@ -123,4 +123,21 @@ class ApplicationAuthenticationService:
 
     async def logout(self, session_id: str) -> None:
         """Logout a user by revoking the session and associated tokens."""
-        await self._token_service.revoke_session(session_id)
+        if not session_id:
+            logger.warning("Logout attempt with empty session_id.")
+            raise InvalidAccessTokenError()
+        
+        async with self._unit_of_work:
+            session = await self._session_repository.get_session(session_id, with_user=True, with_refresh_tokens=True)
+
+            if session is None:
+                logger.warning(f"Session with ID {session_id} not found!!!")
+                raise InvalidAccessTokenError()
+            
+            if session.revoked_at is not None:
+                logger.warning(f"Session with ID {session_id} is already revoked during logout.")
+                raise InvalidAccessTokenError()
+
+            # Revoke the current session, this will also revoke all associated refresh tokens
+            session.revoke(reason="User logged out")
+            # The session and its associated refresh tokens will be saved due to the unit of work context manager

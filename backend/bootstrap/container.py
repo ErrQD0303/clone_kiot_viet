@@ -43,6 +43,7 @@ class AppContainer(containers.DeclarativeContainer):  # pylint: disable=c-extens
     wiring_config = containers.WiringConfiguration(  # pylint: disable=c-extension-no-member
         modules=[
             "identity.presentation.rest.api",
+            "shared_kernel.presentation.security",
         ],
         warn_unresolved=True, # Warn if dependencies cannot be resolved
     )

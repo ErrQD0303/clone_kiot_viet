@@ -3,8 +3,6 @@ from logging import getLogger
 
 from fastapi import FastAPI
 
-from identity.presentation.rest.api import identity_router, user_router
-
 from shared_kernel.infra.database.orm import init_orm_mappers
 from bootstrap.container import AppContainer
 from shared_kernel.infra.fastapi.load_plugins import load_plugins

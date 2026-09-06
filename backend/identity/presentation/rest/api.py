@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Form, Query, Request
 
 from identity.application.exceptions import AccountNotActiveError, InvalidAccessTokenError, InvalidCredentialError, UserNotFoundError
 from identity.application.service.application_authentication_service import ApplicationAuthenticationService
+from identity.application.service.i_authentication_service import IAuthenticationService
 from identity.application.service.models.logout_model import LogoutModel, Revoked_Tokens
 from identity.application.service.models.token import CreatedRefreshToken, Token
 from identity.application.service.token_handler import TokenHandler
@@ -26,6 +27,7 @@ from logging import INFO, getLogger
 from shared_kernel.infra.fastapi.config import Setting, settings
 from shared_kernel.infra.fastapi.helper import as_form
 from shared_kernel.presentation.dependencies.principal import Principal
+from shared_kernel.presentation.security import get_current_principal
 
 logger = getLogger(__name__)
 
@@ -155,38 +157,16 @@ async def login(
 })
 @inject
 async def logout(
-    request: Request,
-    token_handler: Annotated[TokenHandler, Depends(Provide("token_handler"))],
-    session_repository: Annotated[SQLAlchemySessionRepository, Depends(Provide("session_repository"))],
-    unit_of_work: Annotated[UnitOfWork, Depends(Provide("unit_of_work"))],
-) -> TokenResponse:
+    principal: Annotated[Principal, Depends(get_current_principal)],
+    authentication_service: Annotated[IAuthenticationService, Depends(Provide("authentication_service"))]
+) -> LogoutResponse:
     """Logout and revoke the refresh token."""
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith(f"{settings.TOKEN_TYPE} "):
-        logger.warning("Authorization header missing or malformed during logout.")
-        raise InvalidAccessTokenError()
+    logger.info(f"Logout Start: User {principal.username} is attempting to logout. Session ID: {principal.session_id}")
 
-    access_token = auth_header.split(" ")[1]
     try:
-        is_token_valid, token_data = token_handler.validate_access_token(access_token, valid_issuer=settings.ISSUER, valid_audience=settings.AUDIENCE)
-        if not is_token_valid or token_data is None:
-            logger.warning("Invalid access token provided during logout.")
-            raise InvalidAccessTokenError(token=access_token)
-        
-        async with unit_of_work:
-            session = await session_repository.get_session(token_data.session_id, with_user=True, with_refresh_tokens=True)
-            if session is None:
-                logger.warning(f"Session with ID {token_data.session_id} not found during logout.")
-                raise InvalidAccessTokenError(token=access_token)
-            if session.revoked_at is not None:
-                logger.warning(f"Session with ID {token_data.session_id} is already revoked during logout.")
-                raise InvalidAccessTokenError(token=access_token)
+        await authentication_service.logout(session_id=principal.session_id)
 
-            # Revoke the current session, this will also revoke all associated refresh tokens
-            session.revoke(reason="User logged out")
-            # The session and its associated refresh tokens will be saved due to the unit of work context manager
-
-        logger.info(f"User {session.User.username} logged out successfully. Session ID: {token_data.session_id}")
+        logger.info(f"User {principal.username} logged out successfully. Session ID: {principal.session_id}")
     except InvalidAccessTokenError:
         raise
     except Exception as e:
