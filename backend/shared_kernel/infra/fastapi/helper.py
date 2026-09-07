@@ -2,11 +2,13 @@
 
 # Decorators
 # as_form: A decorator to convert a Pydantic model into a form data model for FastAPI endpoints.
+from functools import wraps
 import inspect
-from typing import Any, TypeVar
+from typing import Any, Awaitable, Callable, TypeVar
 
 from pydantic import BaseModel
 from fastapi import Form
+import logging
 
 META_MAPPING_DICT = {
     "MinLen": "min_length",
@@ -70,3 +72,17 @@ def as_form(cls: type[ModelType]) -> type[ModelType]:
     cls.as_form = as_form_func
     return cls
 
+logger = logging.getLogger(__name__)
+
+Endpoint = TypeVar("Endpoint", bound=Callable[..., Awaitable[Any]]) # Callable[..., Awaitable[Any]] represents an asynchronous function that can take any number of arguments and returns an awaitable result.
+def log_endpoint_errors(endpoint: Endpoint) -> Endpoint:
+    """A decorator to log errors in FastAPI endpoints."""
+    @wraps(endpoint)
+    async def wrapper(*args, **kwargs):
+        try:
+            return await endpoint(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in endpoint {endpoint.__name__}: {str(e)}")
+            raise
+
+    return wrapper

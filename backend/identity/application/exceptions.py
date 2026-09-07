@@ -46,3 +46,12 @@ class AccountNotActiveError(Exception):
         self.username = username
         self.message = f"Account with username {username} is not active."
         super().__init__(self.message)
+
+class NotEnoughPermissionError(Exception):
+    """Raise this exception when a user does not have enough permissions to perform an action."""
+
+    def __init__(self, username: str, missing_permissions: list[str]):
+        self.username = username
+        self.required_permissions = missing_permissions
+        self.message = f"User {username} does not have enough permissions. Required: {', '.join(missing_permissions)}."
+        super().__init__(self.message)

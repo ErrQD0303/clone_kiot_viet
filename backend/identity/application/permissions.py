@@ -16,9 +16,15 @@ SELF_USER_INFO_MANAGE = PermissionDefinition(
     description="Permission to manage own user information.",
 )
 
-SELF_USER_INFO_PERMISSIONS = frozenset({
+SELF_USER_LOGOUT = PermissionDefinition(
+    code=PermissionCode(f"{domain}.me.logout"),
+    description="Permission to logout and revoke own refresh token.",
+)
+
+SELF_USER_ACTION_PERMISSIONS = frozenset({
     SELF_USER_INFO_READ,
-    SELF_USER_INFO_MANAGE
+    SELF_USER_INFO_MANAGE,
+    SELF_USER_LOGOUT,
 })
 
 USER_READ = PermissionDefinition(
@@ -48,6 +54,6 @@ IDENTITY_PERMISSIONS = frozenset(
         USER_MANAGE,
         ROLE_MANAGE,
         PERMISSION_MANAGE,
-        *SELF_USER_INFO_PERMISSIONS
+        *SELF_USER_ACTION_PERMISSIONS
     }
 )

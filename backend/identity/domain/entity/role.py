@@ -81,6 +81,14 @@ class Role(AggregateRoot):
 
         from identity.domain.entity.role_permission import RolePermission
 
-        self._permission_links.append(RolePermission(role_id=self.identify, permission_id=permission.identify, granted_at=datetime.now(UTC), granted_by=granted_user))
+        permission_link = RolePermission(
+            role_id=self.identify(),
+            permission_id=permission.identify(),
+            granted_at=datetime.now(UTC),
+            granted_by=granted_user,
+        )
+        permission_link._role = self
+        permission_link._permission = permission
+        self._permission_links.append(permission_link)
         self.updated_at = datetime.now(UTC)
         return True

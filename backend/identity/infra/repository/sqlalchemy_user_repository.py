@@ -27,8 +27,10 @@ class SQLAlchemyUserRepository:
         if not with_roles:
             statement = statement.options(raiseload(User._role_links))
         else:
+            role_load = selectinload(User._role_links).selectinload(UserRole._role)
             if not with_permissions:
-                statement = statement.options(raiseload(User._role_links).raiseload(UserRole._role).raiseload(Role._permission_links).raiseload(Permission._role_links))
+                role_load = role_load.raiseload(Role._permission_links)
+            statement = statement.options(role_load)
         if not with_sessions:
             statement = statement.options(raiseload(User._session_links))
         else:

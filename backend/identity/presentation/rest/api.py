@@ -8,6 +8,7 @@ from dependency_injector.wiring import inject, Provide, Closing
 from fastapi import APIRouter, Depends, Form, Query, Request
 
 from identity.application.exceptions import AccountNotActiveError, InvalidAccessTokenError, InvalidCredentialError, UserNotFoundError
+from identity.application.permissions import SELF_USER_LOGOUT, USER_READ
 from identity.application.service.application_authentication_service import ApplicationAuthenticationService
 from identity.application.service.i_authentication_service import IAuthenticationService
 from identity.application.service.models.logout_model import LogoutModel, Revoked_Tokens
@@ -15,6 +16,7 @@ from identity.application.service.models.token import CreatedRefreshToken, Token
 from identity.application.service.token_handler import TokenHandler
 from identity.application.service.token_service import TokenService
 from identity.domain.entity.session import Session
+from identity.domain.entity.user import User
 from identity.domain.repository.refreshtoken_repository import RefreshTokenRepository
 from identity.domain.repository.user_repository import UserRepository
 from identity.infra.repository.sqlalchemy_session_repository import SQLAlchemySessionRepository
@@ -25,9 +27,9 @@ from shared_kernel.domain.unit_of_work import UnitOfWork
 from shared_kernel.infra.database.schema import Schema
 from logging import INFO, getLogger
 from shared_kernel.infra.fastapi.config import Setting, settings
-from shared_kernel.infra.fastapi.helper import as_form
+from shared_kernel.infra.fastapi.helper import as_form, log_endpoint_errors
 from shared_kernel.presentation.dependencies.principal import Principal
-from shared_kernel.presentation.security import get_current_principal
+from shared_kernel.presentation.security import require_permission
 
 logger = getLogger(__name__)
 
@@ -43,23 +45,26 @@ auth_router = APIRouter(prefix=auth_router_prefix)
 
 @user_router.get("/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK, responses={
     status.HTTP_200_OK: {"model": UserResponse},
+    status.HTTP_401_UNAUTHORIZED: {"model": UserResponseError},
+    status.HTTP_403_FORBIDDEN: {"model": UserResponseError},
     status.HTTP_404_NOT_FOUND: {"model": UserResponseError},
 })
 @inject
+@log_endpoint_errors
 async def get_user_by_id(
+    principal: Annotated[Principal, Depends(require_permission(USER_READ))],
     user_id: str,
     user_repository: Annotated[UserRepository, Depends(Closing[Provide["user_repository"]])],
-    include_roles: bool = Query(default=False, description="Include roles in the response"),
-    user: str = Query(default="anonymous", description="user that makes the query")
+    with_roles: bool = Query(default=False, description="Include roles in the response")
 ) -> UserResponse:
     """Get a user by ID."""
-    logger.info(f"User {user} is querying for user with ID: {user_id}, include_roles={include_roles}")
-    user = await user_repository.get_by_id(user_id, include_roles=include_roles)
+    logger.info("Querying for user with ID: %s, include_roles=%s", user_id, with_roles)
+    user: User = await user_repository.get_by_id(user_id, with_roles=with_roles)
     if user is None:
         logger.info(f"User with ID {user_id} not found.")
         raise UserNotFoundError(user_id=user_id)
 
-    logger.info(f"User with ID {user_id} found: {user.username}, include_roles={include_roles}")
+    logger.info(f"User with ID {user_id} found: {user.username}, include_roles={with_roles}")
 
     return UserResponse(
         detail="ok",
@@ -68,18 +73,29 @@ async def get_user_by_id(
             username=user.username,
             display_name=user.display_name,
             email=user.email,
-            roles=[role.Role.code for role in user.RoleLinks] if include_roles else []
+            roles=[role.Role.code for role in user.RoleLinks] if with_roles else []
         )
     )
 
-@user_router.get("/")
+@user_router.get("/", response_model=UsersResponse, status_code=status.HTTP_200_OK, responses={
+    status.HTTP_200_OK: {"model": UsersResponse},
+    status.HTTP_401_UNAUTHORIZED: {"model": UserResponseError},
+    status.HTTP_403_FORBIDDEN: {"model": UserResponseError},
+    status.HTTP_404_NOT_FOUND: {"model": UserResponseError},
+})
 @inject
+@log_endpoint_errors
 async def get_all_users(
+    principal: Annotated[Principal, Depends(require_permission(USER_READ))],
     user_repository: Annotated[UserRepository, Depends(Closing[Provide["user_repository"]])],
-    include_roles: bool = Query(default=False, description="Include roles in the response"),
+    with_roles: bool = Query(default=False, description="Include roles in the response"),
 ) -> UsersResponse:
     """Get all users."""
-    users = await user_repository.get_all_users(with_roles=include_roles)
+    logger.info(f"Querying for all users, include_roles={with_roles}")
+    
+    users = await user_repository.get_all_users(with_roles=with_roles)
+
+    logger.info(f"Found {len(users)} users, include_roles={with_roles}")
     return UsersResponse(
             detail="ok",
             result= [UserSchema(
@@ -87,22 +103,27 @@ async def get_all_users(
                 username=user.username,
                 display_name=user.display_name,
                 email=user.email,
-                roles=[role.Role.code for role in user.RoleLinks] if include_roles else []) for user in users])
+                roles=[role.Role.code for role in user.RoleLinks] if with_roles else []) for user in users])
 
 @user_router.get("/by-username/{username}", response_model=UserResponse, status_code=status.HTTP_200_OK, responses={
     status.HTTP_200_OK: {"model": UserResponse},
     status.HTTP_404_NOT_FOUND: {"model": UserResponseError},
 })
 @inject
+@log_endpoint_errors
 async def get_user_by_username(
+    principal: Annotated[Principal, Depends(require_permission(USER_READ))],
     username: str,
     user_repository: Annotated[UserRepository, Depends(Closing[Provide["user_repository"]])],
-    include_roles: bool = Query(default=False, description="Include roles in the response"),
+    with_roles: bool = Query(default=False, description="Include roles in the response"),
 ) -> UserResponse:
     """Get a user by username."""
-    user = await user_repository.get_user_by_username(username, include_roles=include_roles)
+    logger.info(f"Querying for user with username: {username}, with_roles={with_roles}")
+    user = await user_repository.get_user_by_username(username, with_roles=with_roles)
     if user is None:
         raise UserNotFoundError(username=username)
+
+    logger.info(f"User with username {username} found: {user.username}, with_roles={with_roles}")
 
     return UserResponse(
         detail="ok",
@@ -111,7 +132,7 @@ async def get_user_by_username(
             username=user.username,
             display_name=user.display_name,
             email=user.email,
-            roles=[role.Role.code for role in user.RoleLinks] if include_roles else []
+            roles=[role.Role.code for role in user.RoleLinks] if with_roles else []
         )
     )
 
@@ -119,6 +140,7 @@ async def get_user_by_username(
     status.HTTP_201_CREATED: {"model": TokenResponse},
 })
 @inject
+@log_endpoint_errors
 async def login(
     request: Request,
     authentication_service: Annotated[ApplicationAuthenticationService, Depends(Provide("authentication_service"))],
@@ -129,22 +151,12 @@ async def login(
     user_agent = request.headers.get("user-agent") if request.headers else None
     logger.info(f"Login attempt for username: {form_data.username} from IP: {user_ip_address}, User-Agent: {user_agent}")
 
-    try:
-        token_pair = await authentication_service.login_by_username(
-            username=form_data.username,
-            password=form_data.password.get_secret_value(),
-            ip_address=user_ip_address,
-            user_agent=user_agent,
-        )
-    except InvalidCredentialError:
-        # Will be handled by the exception handler registered for InvalidCredentialError
-        raise 
-    except AccountNotActiveError:
-        # Will be handled by the exception handler registered for AccountNotActiveError
-        raise 
-    except Exception as e:
-        logger.error(f"Unexpected error during login for username: {form_data.username}. Error: {str(e)}")
-        raise
+    token_pair = await authentication_service.login_by_username(
+        username=form_data.username,
+        password=form_data.password.get_secret_value(),
+        ip_address=user_ip_address,
+        user_agent=user_agent,
+    )
 
     return TokenResponse(
         detail="ok",
@@ -156,22 +168,17 @@ async def login(
     status.HTTP_401_UNAUTHORIZED: {"model": UserResponseError}
 })
 @inject
+@log_endpoint_errors
 async def logout(
-    principal: Annotated[Principal, Depends(get_current_principal)],
+    principal: Annotated[Principal, Depends(require_permission(SELF_USER_LOGOUT))],
     authentication_service: Annotated[IAuthenticationService, Depends(Provide("authentication_service"))]
 ) -> LogoutResponse:
     """Logout and revoke the refresh token."""
     logger.info(f"Logout Start: User {principal.username} is attempting to logout. Session ID: {principal.session_id}")
 
-    try:
-        await authentication_service.logout(session_id=principal.session_id)
+    await authentication_service.logout(session_id=principal.session_id)
 
-        logger.info(f"User {principal.username} logged out successfully. Session ID: {principal.session_id}")
-    except InvalidAccessTokenError:
-        raise
-    except Exception as e:
-        logger.error(f"Error during logout: {str(e)}")
-        raise
+    logger.info(f"User {principal.username} logged out successfully. Session ID: {principal.session_id}")
 
     return LogoutResponse(
         detail="Logout successful!!!",
